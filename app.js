@@ -544,13 +544,14 @@ const AcquashowApp = (function() {
     }
 
     function renderZonas() {
+function renderZonas() {
         const container = document.getElementById('zonas-container');
         if (!container) return;
 
         container.innerHTML = '';
         appData.zonas.forEach(z => {
             const count = appData.clientes.filter(c => c.zonaId === z.id && c.status === 'ativo').length;
-            container.innerHTML += `<div class="glass-effect rounded-xl p-6 card-hover border-t-4" style="border-color: ${z.cor}"><div class="flex justify-between items-start mb-2"><h4 class="font-semibold">${z.nome}</h4></div><p class="text-sm text-gray-400 mb-3">${z.descricao}</p><div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full" style="background-color: ${z.cor}"></span><span>${count} piscinas</span></div></div>`;
+            container.innerHTML += `<div class="glass-effect rounded-xl p-6 card-hover border-t-4" style="border-color: ${z.cor}"><div class="flex justify-between items-start mb-3"><h4 class="font-semibold">${z.nome}</h4><div class="flex gap-2"><button onclick="editarZona(${z.id})" class="text-acqua-light hover:text-white transition-colors" title="Editar"><i class="fas fa-edit"></i></button><button onclick="abrirRemanejamento(${z.id})" class="text-yellow-400 hover:text-yellow-300 transition-colors" title="Remanejamento"><i class="fas fa-exchange-alt"></i></button></div></div><p class="text-sm text-gray-400 mb-3">${z.descricao}</p><div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full" style="background-color: ${z.cor}"></span><span>${count} piscinas</span></div></div>`;
         });
     }
 
