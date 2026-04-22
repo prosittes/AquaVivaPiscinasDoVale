@@ -548,6 +548,14 @@ document.addEventListener('DOMContentLoaded', function() {
     initMap();
 });
 
+// ==================== FUNÇÕES AUXILIARES ====================
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('-translate-x-full');
+    }
+}
+
 // Expor globalmente
 window.app = {
     appData,
@@ -575,7 +583,8 @@ window.app = {
     toggleConcluido,
     populateSelects,
     showSection,
-    enviarAgendaTecnico
+    enviarAgendaTecnico,
+    toggleSidebar
 };
 
 console.log('✓ app-unified.js carregado com sucesso - Sistema 100% funcional');
