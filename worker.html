@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acquashow - Agenda do Funcionário</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * { scrollbar-width: thin; scrollbar-color: #38bdf8 #0c4a6e; }
+        *::-webkit-scrollbar { width: 8px; }
+        *::-webkit-scrollbar-track { background: #0c4a6e; }
+        *::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 4px; }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(6, 182, 212, 0.2);
+        }
+
+        .map-container { height: 400px; }
+        @media (max-width: 768px) { .map-container { height: 300px; } }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans antialiased">
+
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-cyan-600 shadow-lg">
+            <div class="max-w-6xl mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-water text-2xl"></i>
+                        <div>
+                            <h1 class="text-2xl font-bold">Acquashow</h1>
+                            <p class="text-sm opacity-90">Agenda do Funcionário</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p id="tecnico-nome" class="text-lg font-semibold">Carregando...</p>
+                        <p id="data-hoje" class="text-sm opacity-90"></p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-6xl mx-auto px-4 py-8">
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass-effect rounded-lg p-4">
+                    <p class="text-gray-400 text-sm">Total</p>
+                    <h3 id="stat-total" class="text-3xl font-bold mt-2">0</h3>
+                </div>
+                <div class="glass-effect rounded-lg p-4">
+                    <p class="text-gray-400 text-sm">Pontos</p>
+                    <h3 id="stat-pontos" class="text-3xl font-bold mt-2">0</h3>
+                </div>
+                <div class="glass-effect rounded-lg p-4">
+                    <p class="text-gray-400 text-sm">Concluídas</p>
+                    <h3 id="stat-concluidas" class="text-3xl font-bold text-green-400 mt-2">0</h3>
+                </div>
+                <div class="glass-effect rounded-lg p-4">
+                    <p class="text-gray-400 text-sm">Pendentes</p>
+                    <h3 id="stat-pendentes" class="text-3xl font-bold text-yellow-400 mt-2">0</h3>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-2 mb-6 border-b border-white/10">
+                <button onclick="switchTab('agenda')" id="tab-agenda" class="px-4 py-3 border-b-2 border-blue-500 text-white font-semibold">
+                    <i class="fas fa-calendar mr-2"></i>Agenda
+                </button>
+                <button onclick="switchTab('mapa')" id="tab-mapa" class="px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">
+                    <i class="fas fa-map mr-2"></i>Mapa
+                </button>
+                <button onclick="switchTab('relatorio')" id="tab-relatorio" class="px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">
+                    <i class="fas fa-file-alt mr-2"></i>Relatório
+                </button>
+            </div>
+
+            <!-- Agenda Tab -->
+            <div id="tab-content-agenda" class="space-y-4">
+                <div id="agenda-container" class="space-y-4"></div>
+            </div>
+
+            <!-- Mapa Tab -->
+            <div id="tab-content-mapa" class="hidden">
+                <div id="map" class="map-container rounded-lg overflow-hidden border border-white/10"></div>
+            </div>
+
+            <!-- Relatório Tab -->
+            <div id="tab-content-relatorio" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-effect rounded-lg p-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            Concluídas
+                        </h3>
+                        <div id="relatorio-concluidas" class="space-y-3"></div>
+                    </div>
+                    <div class="glass-effect rounded-lg p-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-hourglass-end text-yellow-400"></i>
+                            Pendentes
+                        </h3>
+                        <div id="relatorio-pendentes" class="space-y-3"></div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">Resumo do Dia</h3>
+                    <div id="relatorio-resumo" class="space-y-2 text-sm"></div>
+                    <button onclick="gerarRelatorioRetorno()" class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2">
+                        <i class="fas fa-download"></i>
+                        Gerar Relatório de Retorno
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div id="modal-editar" class="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto hidden border border-white/10">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Editar Cliente</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="form-editar" onsubmit="salvarEdicao(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editar-cliente-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Nome</label>
+                        <input type="text" id="editar-nome" readonly class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-gray-400">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Piscina</label>
+                        <input type="text" id="editar-piscina" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-blue-400 text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Endereço</label>
+                    <input type="text" id="editar-endereco" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-blue-400 text-white">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bairro</label>
+                        <input type="text" id="editar-bairro" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-blue-400 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Condomínio</label>
+                        <input type="text" id="editar-condominio" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-blue-400 text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Observações</label>
+                    <textarea id="editar-obs" rows="3" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-blue-400 text-white"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+    <script src="firebase.js"></script>
+    <script src="firebase-sync.js"></script>
+
+    <script>
+        let appData = { zonas: [], tecnicos: [], clientes: [] };
+        let tecnicoAtual = null;
+        let map = null;
+        let markers = [];
+
+        // Inicialização
+        function init() {
+            loadData();
+            const params = new URLSearchParams(window.location.search);
+            const tecnicoId = parseInt(params.get('tecnico'));
+            
+            if (!tecnicoId) {
+                document.body.innerHTML = '<div class="flex items-center justify-center h-screen"><div class="text-center"><i class="fas fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i><p class="text-xl text-gray-400">Acesso inválido. Nenhum técnico especificado.</p></div></div>';
+                return;
+            }
+
+            tecnicoAtual = appData.tecnicos.find(t => t.id === tecnicoId);
+            if (!tecnicoAtual) {
+                document.body.innerHTML = '<div class="flex items-center justify-center h-screen"><div class="text-center"><i class="fas fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i><p class="text-xl text-gray-400">Técnico não encontrado.</p></div></div>';
+                return;
+            }
+
+            updateDate();
+            renderAgenda();
+            initMap();
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('acquashow_data');
+            if (saved) {
+                appData = JSON.parse(saved);
+            }
+        }
+
+        function updateDate() {
+            const hoje = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('data-hoje').textContent = hoje.toLocaleDateString('pt-BR', options);
+            document.getElementById('tecnico-nome').textContent = tecnicoAtual.nome;
+        }
+
+        function getDiaHoje() {
+            const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase();
+            const diasMap = {'segunda-feira': 'segunda', 'terça-feira': 'terca', 'quarta-feira': 'quarta', 'quinta-feira': 'quinta', 'sexta-feira': 'sexta', 'sábado': 'sabado'};
+            return diasMap[hoje] || 'segunda';
+        }
+
+        function renderAgenda() {
+            const diaHoje = getDiaHoje();
+            const clientes = appData.clientes.filter(c => 
+                c.tecnicoId === tecnicoAtual.id && c.dia === diaHoje && c.status === 'ativo'
+            );
+
+            const totalPontos = clientes.reduce((sum, c) => sum + c.peso, 0);
+            const concluidas = clientes.filter(c => c.concluido).length;
+            const pendentes = clientes.filter(c => !c.concluido).length;
+
+            document.getElementById('stat-total').textContent = clientes.length;
+            document.getElementById('stat-pontos').textContent = totalPontos.toFixed(1);
+            document.getElementById('stat-concluidas').textContent = concluidas;
+            document.getElementById('stat-pendentes').textContent = pendentes;
+
+            const container = document.getElementById('agenda-container');
+            if (clientes.length === 0) {
+                container.innerHTML = '<div class="text-center py-12"><i class="fas fa-check-circle text-green-500 text-4xl mb-4"></i><p class="text-gray-400">Nenhum cliente agendado para hoje!</p></div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            clientes.forEach((c, index) => {
+                const zona = appData.zonas.find(z => z.id === c.zonaId);
+                const statusClass = c.concluido ? 'bg-green-500/20 border-green-500' : 'bg-yellow-500/20 border-yellow-500';
+                
+                container.innerHTML += `
+                    <div class="glass-effect rounded-lg p-4 border ${statusClass} card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold">${index + 1}. ${c.nome}</h3>
+                                <p class="text-sm text-gray-400">${c.piscina || 'Piscina'}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="toggleConcluido(${c.id})" class="px-3 py-1 rounded text-sm ${c.concluido ? 'bg-green-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}">
+                                    <i class="fas fa-check mr-1"></i>${c.concluido ? 'Concluído' : 'Pendente'}
+                                </button>
+                                <button onclick="abrirEdicao(${c.id})" class="px-3 py-1 rounded text-sm bg-blue-600 hover:bg-blue-500 text-white">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm">
+                            <p><i class="fas fa-map-marker-alt text-red-400 mr-2"></i><strong>${c.endereco}</strong></p>
+                            <p><i class="fas fa-home text-blue-400 mr-2"></i>${c.bairro}</p>
+                            ${c.condominio ? `<p><i class="fas fa-building text-purple-400 mr-2"></i>${c.condominio}</p>` : ''}
+                            <p><i class="fas fa-weight-hanging text-yellow-400 mr-2"></i>${c.peso} pts • <i class="fas fa-clock mr-1"></i>${c.tempo} min</p>
+                            ${c.obs ? `<p class="text-gray-300"><i class="fas fa-sticky-note text-orange-400 mr-2"></i>${c.obs}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            renderRelatorio();
+        }
+
+        function renderRelatorio() {
+            const diaHoje = getDiaHoje();
+            const clientes = appData.clientes.filter(c => 
+                c.tecnicoId === tecnicoAtual.id && c.dia === diaHoje && c.status === 'ativo'
+            );
+
+            const concluidas = clientes.filter(c => c.concluido);
+            const pendentes = clientes.filter(c => !c.concluido);
+
+            let html = '';
+            concluidas.forEach(c => {
+                html += `<div class="p-3 bg-white/5 rounded-lg border-l-4 border-green-500"><strong>${c.nome}</strong><br><small class="text-gray-400">${c.endereco}</small></div>`;
+            });
+            document.getElementById('relatorio-concluidas').innerHTML = html || '<p class="text-gray-400">Nenhuma concluída ainda</p>';
+
+            html = '';
+            pendentes.forEach(c => {
+                html += `<div class="p-3 bg-white/5 rounded-lg border-l-4 border-yellow-500"><strong>${c.nome}</strong><br><small class="text-gray-400">${c.endereco}</small></div>`;
+            });
+            document.getElementById('relatorio-pendentes').innerHTML = html || '<p class="text-gray-400">Todas concluídas!</p>';
+
+            const totalPontos = clientes.reduce((sum, c) => sum + c.peso, 0);
+            const totalTempo = clientes.reduce((sum, c) => sum + c.tempo, 0);
+            const percentualConcluido = clientes.length > 0 ? ((concluidas.length / clientes.length) * 100).toFixed(1) : 0;
+
+            document.getElementById('relatorio-resumo').innerHTML = `
+                <p><strong>Total de piscinas:</strong> ${clientes.length}</p>
+                <p><strong>Concluídas:</strong> ${concluidas.length} (${percentualConcluido}%)</p>
+                <p><strong>Pendentes:</strong> ${pendentes.length}</p>
+                <p><strong>Pontos totais:</strong> ${totalPontos.toFixed(1)}</p>
+                <p><strong>Tempo total:</strong> ${totalTempo} minutos</p>
+            `;
+        }
+
+        function toggleConcluido(clienteId) {
+            const cliente = appData.clientes.find(c => c.id === clienteId);
+            if (cliente) {
+                cliente.concluido = !cliente.concluido;
+                localStorage.setItem('acquashow_data', JSON.stringify(appData));
+                renderAgenda();
+            }
+        }
+
+        function abrirEdicao(clienteId) {
+            const cliente = appData.clientes.find(c => c.id === clienteId);
+            if (!cliente) return;
+
+            document.getElementById('editar-cliente-id').value = cliente.id;
+            document.getElementById('editar-nome').value = cliente.nome;
+            document.getElementById('editar-piscina').value = cliente.piscina || '';
+            document.getElementById('editar-endereco').value = cliente.endereco;
+            document.getElementById('editar-bairro').value = cliente.bairro;
+            document.getElementById('editar-condominio').value = cliente.condominio || '';
+            document.getElementById('editar-obs').value = cliente.obs || '';
+
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-editar').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('modal-editar').classList.add('hidden');
+        }
+
+        function salvarEdicao(e) {
+            e.preventDefault();
+            const clienteId = parseInt(document.getElementById('editar-cliente-id').value);
+            const cliente = appData.clientes.find(c => c.id === clienteId);
+
+            if (cliente) {
+                cliente.piscina = document.getElementById('editar-piscina').value;
+                cliente.endereco = document.getElementById('editar-endereco').value;
+                cliente.bairro = document.getElementById('editar-bairro').value;
+                cliente.condominio = document.getElementById('editar-condominio').value;
+                cliente.obs = document.getElementById('editar-obs').value;
+
+                localStorage.setItem('acquashow_data', JSON.stringify(appData));
+                closeModal();
+                renderAgenda();
+                alert('Cliente atualizado com sucesso!');
+            }
+        }
+
+        function initMap() {
+            const mapElement = document.getElementById('map');
+            if (!map && mapElement) {
+                map = L.map(mapElement).setView([-23.19, -45.88], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+                renderMapa();
+            }
+        }
+
+        function renderMapa() {
+            if (!map) return;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const diaHoje = getDiaHoje();
+            const clientes = appData.clientes.filter(c => 
+                c.tecnicoId === tecnicoAtual.id && c.dia === diaHoje && c.status === 'ativo' && c.lat && c.lng
+            );
+
+            clientes.forEach(c => {
+                const zona = appData.zonas.find(z => z.id === c.zonaId);
+                const cor = c.concluido ? '#22c55e' : zona?.cor || '#38bdf8';
+
+                const marker = L.circleMarker([c.lat, c.lng], {
+                    radius: 10,
+                    fillColor: cor,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                marker.bindPopup(`<div style="color: #333;"><strong>${c.nome}</strong><br>${c.endereco}<br><small>${c.bairro}</small></div>`);
+                markers.push(marker);
+            });
+
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('border-blue-500'));
+            
+            document.getElementById('tab-content-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).classList.add('border-blue-500');
+
+            if (tab === 'mapa') {
+                setTimeout(() => renderMapa(), 100);
+            }
+        }
+
+        function gerarRelatorioRetorno() {
+            const diaHoje = getDiaHoje();
+            const clientes = appData.clientes.filter(c => 
+                c.tecnicoId === tecnicoAtual.id && c.dia === diaHoje && c.status === 'ativo'
+            );
+
+            const concluidas = clientes.filter(c => c.concluido);
+            const pendentes = clientes.filter(c => !c.concluido);
+            const totalPontos = clientes.reduce((sum, c) => sum + c.peso, 0);
+
+            let relatorio = `RELATÓRIO DE RETORNO - ${tecnicoAtual.nome}\n`;
+            relatorio += `Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
+            relatorio += `${'='.repeat(50)}\n\n`;
+            
+            relatorio += `CONCLUÍDAS (${concluidas.length}):\n`;
+            concluidas.forEach(c => {
+                relatorio += `✓ ${c.nome} - ${c.endereco}\n`;
+            });
+
+            relatorio += `\nPENDENTES (${pendentes.length}):\n`;
+            pendentes.forEach(c => {
+                relatorio += `✗ ${c.nome} - ${c.endereco}\n`;
+            });
+
+            relatorio += `\n${'='.repeat(50)}\n`;
+            relatorio += `RESUMO:\n`;
+            relatorio += `Total: ${clientes.length} piscinas\n`;
+            relatorio += `Concluídas: ${concluidas.length}\n`;
+            relatorio += `Pendentes: ${pendentes.length}\n`;
+            relatorio += `Pontos: ${totalPontos.toFixed(1)}\n`;
+
+            const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `relatorio_${tecnicoAtual.nome.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+            link.click();
+        }
+
+        // Inicializar ao carregar
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>
