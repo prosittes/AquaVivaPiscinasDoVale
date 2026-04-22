@@ -261,7 +261,7 @@
                         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="search-clientes" onkeyup="app.searchClientes()" placeholder="Buscar cliente..." class="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 outline-none focus:border-acqua-light text-white">
                     </div>
-                    <button onclick="app.openModal('cliente')" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <button onclick="app.abrirModalCliente()" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2 w-full sm:w-auto justify-center">
                         <i class="fas fa-plus"></i> Novo Cliente
                     </button>
                 </div>
@@ -338,23 +338,19 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h3 class="text-xl font-semibold">Gestão de Equipe</h3>
                     <div class="flex gap-2 flex-wrap">
-                        <button onclick="app.exportarTecnicosWhatsApp()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                            <i class="fas fa-whatsapp"></i> Enviar WhatsApp
-                        </button>
-                        <button onclick="abrirModalTecnico()" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                        <button onclick="app.abrirModalTecnico()" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2">
                             <i class="fas fa-plus"></i> Novo Técnico
                         </button>
                     </div>
                 </div>
                 <div id="equipe-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-                <!-- Os botões de editar e excluir são adicionados dinamicamente via JavaScript -->
             </section>
 
             <!-- Zonas Section -->
             <section id="zonas-section" class="hidden space-y-6">
                 <div class="flex justify-between items-center">
                     <h3 class="text-xl font-semibold">Zonas de Atuação</h3>
-                    <button onclick="abrirModalZona()" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                    <button onclick="app.abrirModalZona()" class="bg-acqua-primary hover:bg-acqua-light text-white px-4 py-2 rounded-lg flex items-center gap-2">
                         <i class="fas fa-plus"></i> Nova Zona
                     </button>
                 </div>
@@ -590,7 +586,6 @@
 
     <script src="firebase.js"></script>
     <script src="firebase-sync.js"></script>
-    <script src="whatsapp-integration.js"></script>
     <script src="app-unified.js"></script>
 
 </body>

@@ -1,7 +1,7 @@
 /**
  * ACQUASHOW - Sistema Unificado de Rotas e Gestão de Equipes
- * Versão: 3.0 (Unificada e 100% Funcional)
- * Consolida: app.js + modals.js + zonas-manager.js
+ * Versão: 3.1 (Unificada e 100% Funcional)
+ * Consolida: app.js + modals.js + zonas-manager.js + correções de mapas e links
  */
 
 // ==================== INICIALIZAÇÃO GLOBAL ====================
@@ -369,12 +369,17 @@ function renderEquipe() {
                         <p class="text-xs text-gray-400">${piscinasCount} piscinas</p>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="editarTecnico(${t.id})" class="flex-1 bg-acqua-primary hover:bg-acqua-light text-white px-3 py-2 rounded-lg text-sm transition-colors">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button onclick="excluirTecnico(${t.id})" class="flex-1 bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">
-                        <i class="fas fa-trash"></i> Excluir
+                <div class="flex flex-col gap-2">
+                    <div class="flex gap-2">
+                        <button onclick="editarTecnico(${t.id})" class="flex-1 bg-acqua-primary hover:bg-acqua-light text-white px-3 py-2 rounded-lg text-sm transition-colors">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button onclick="excluirTecnico(${t.id})" class="flex-1 bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                    <button onclick="enviarAgendaTecnico(${t.id})" class="w-full bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg flex items-center gap-2 justify-center text-sm transition-colors">
+                        <i class="fas fa-whatsapp"></i> Enviar Agenda
                     </button>
                 </div>
             </div>`;
@@ -401,6 +406,9 @@ function renderZonas() {
                         </button>
                         <button onclick="excluirZona(${z.id})" class="text-red-400 hover:text-red-300 transition-colors" title="Excluir">
                             <i class="fas fa-trash"></i>
+                        </button>
+                        <button onclick="abrirRemanejamento(${z.id})" class="text-yellow-400 hover:text-yellow-300 transition-colors" title="Remanejamento">
+                            <i class="fas fa-exchange-alt"></i>
                         </button>
                     </div>
                 </div>
@@ -494,6 +502,43 @@ function showSection(section) {
     }
 }
 
+// ==================== WHATSAPP E LINKS ====================
+function enviarAgendaTecnico(tecnicoId) {
+    const tecnico = appData.tecnicos.find(t => t.id === tecnicoId);
+    if (!tecnico) return;
+
+    const hoje = new Date();
+    const diaSemana = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'][hoje.getDay()];
+    
+    const clientes = appData.clientes.filter(c => 
+        c.tecnicoId === tecnicoId && c.dia === diaSemana && c.status === 'ativo'
+    );
+
+    if (clientes.length === 0) {
+        alert('Nenhum cliente agendado para hoje para este técnico.');
+        return;
+    }
+
+    // Link do Funcionário (Corrigido para evitar 404)
+    const baseUrl = window.location.href.split('index.html')[0].split('?')[0];
+    const workerUrl = baseUrl + (baseUrl.endsWith('/') ? '' : '/') + 'worker.html?tecnico=' + tecnicoId;
+
+    let mensagem = `*📋 Agenda de ${tecnico.nome} - ${hoje.toLocaleDateString('pt-BR')}*\n`;
+    mensagem += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    
+    clientes.forEach((c, index) => {
+        mensagem += `${index + 1}. *${c.nome}*\n`;
+        mensagem += `   📍 ${c.endereco}\n`;
+        mensagem += `   🏘️ ${c.bairro}\n\n`;
+    });
+
+    mensagem += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+    mensagem += `🔗 *Acesse sua Agenda:* ${workerUrl}\n`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, '_blank');
+}
+
 // ==================== INICIALIZAÇÃO ====================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✓ App Unificado Carregado');
@@ -529,7 +574,8 @@ window.app = {
     initMap,
     toggleConcluido,
     populateSelects,
-    showSection
+    showSection,
+    enviarAgendaTecnico
 };
 
 console.log('✓ app-unified.js carregado com sucesso - Sistema 100% funcional');
