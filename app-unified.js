@@ -74,6 +74,11 @@ function abrirModalCliente() {
         document.getElementById('form-cliente').reset();
         document.getElementById('cliente-id').value = '';
         document.getElementById('modal-cliente-title').textContent = 'Cadastrar Cliente';
+        
+        // Inicializar autocomplete de endereço
+        setTimeout(() => {
+            initAddressAutocomplete('cliente-endereco', 'cliente-bairro', 'cliente-lat', 'cliente-lng');
+        }, 100);
     }
 }
 
@@ -130,6 +135,11 @@ function editarCliente(id) {
     document.getElementById('cliente-observacoes').value = cliente.obs || '';
     document.getElementById('cliente-ativo').checked = cliente.status === 'ativo';
     document.getElementById('modal-cliente-title').textContent = 'Editar Cliente';
+    
+    // Reinicializar autocomplete para edicao
+    setTimeout(() => {
+        initAddressAutocomplete('cliente-endereco', 'cliente-bairro', 'cliente-lat', 'cliente-lng');
+    }, 100);
 }
 
 function excluirCliente(id) {
@@ -606,7 +616,144 @@ window.app = {
     populateSelects,
     showSection,
     enviarAgendaTecnico,
-    toggleSidebar
+    toggleSidebar,
+    renderAgenda,
+    renderNaoAtribuidos,
+    atribuirCliente,
+    distribuirInteligente,
+    updatePeso,
+    searchClientes,
+    exportarRelatorio,
+    exportarTecnicosWhatsApp
 };
 
 console.log('✓ app-unified.js carregado com sucesso - Sistema 100% funcional');
+
+
+// ==================== FUNCOES DE AGENDA E DISTRIBUICAO ====================
+function renderAgenda() {
+    const diaSelect = document.getElementById('agenda-day-select');
+    const container = document.getElementById('agenda-container');
+    if (!diaSelect || !container) return;
+
+    const dia = diaSelect.value;
+    const clientes = appData.clientes.filter(c => c.dia === dia && c.status === 'ativo');
+
+    if (clientes.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">Nenhum cliente agendado para ' + dia + '</div>';
+        return;
+    }
+
+    let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+    clientes.forEach(c => {
+        const tecnico = appData.tecnicos.find(t => t.id === c.tecnicoId);
+        html += `<div class="glass-effect rounded-lg p-4"><div class="flex justify-between items-start mb-2"><div><h4 class="font-semibold">${c.nome}</h4><p class="text-sm text-gray-400">${c.piscina || 'Piscina'}</p></div><span class="text-xs px-2 py-1 rounded bg-acqua-primary/20 text-acqua-light">${c.peso}pt</span></div><p class="text-sm text-gray-400 mb-2">${c.endereco}</p><p class="text-sm text-gray-400 mb-3">${tecnico ? tecnico.nome : 'Nao atribuido'}</p><button onclick="app.toggleConcluido(${c.id})" class="w-full px-3 py-2 rounded text-sm ${c.concluido ? 'bg-green-600/20 text-green-400' : 'bg-white/5 text-gray-300'} hover:bg-white/10 transition-colors">${c.concluido ? 'Concluido' : 'Pendente'}</button></div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderNaoAtribuidos() {
+    const container = document.getElementById('fila-nao-atribuidos');
+    if (!container) return;
+
+    const naoAtribuidos = appData.clientes.filter(c => !c.tecnicoId && c.status === 'ativo');
+
+    if (naoAtribuidos.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">Todos os clientes foram atribuidos!</div>';
+        return;
+    }
+
+    container.innerHTML = naoAtribuidos.map(c => `<div class="glass-effect rounded-lg p-4"><h4 class="font-semibold mb-2">${c.nome}</h4><p class="text-sm text-gray-400 mb-2">${c.endereco}</p><p class="text-sm text-gray-400 mb-3">Dia: ${c.dia}</p><select onchange="app.atribuirCliente(${c.id}, this.value)" class="w-full bg-white/5 border border-white/10 rounded px-2 py-2 text-sm text-white"><option value="">Atribuir a...</option>${appData.tecnicos.filter(t => t.status === 'disponivel').map(t => `<option value="${t.id}">${t.nome}</option>`).join('')}</select></div>`).join('');
+}
+
+function atribuirCliente(clienteId, tecnicoId) {
+    const cliente = appData.clientes.find(c => c.id === clienteId);
+    if (cliente && tecnicoId) {
+        cliente.tecnicoId = parseInt(tecnicoId);
+        saveData();
+        renderNaoAtribuidos();
+        renderClientes();
+        renderEquipe();
+        renderDashboard();
+        alert('Cliente atribuido com sucesso!');
+    }
+}
+
+function distribuirInteligente() {
+    const naoAtribuidos = appData.clientes.filter(c => !c.tecnicoId && c.status === 'ativo');
+    const tecnicos = appData.tecnicos.filter(t => t.status === 'disponivel');
+
+    if (naoAtribuidos.length === 0) {
+        alert('Nao ha clientes para distribuir!');
+        return;
+    }
+
+    if (tecnicos.length === 0) {
+        alert('Nao ha tecnicos disponiveis!');
+        return;
+    }
+
+    naoAtribuidos.forEach((cliente, index) => {
+        const tecnico = tecnicos[index % tecnicos.length];
+        cliente.tecnicoId = tecnico.id;
+    });
+
+    saveData();
+    renderNaoAtribuidos();
+    renderClientes();
+    renderEquipe();
+    renderDashboard();
+    alert('Distribuicao inteligente realizada!');
+}
+
+function updatePeso() {
+    const tipoSelect = document.getElementById('cliente-tipo');
+    const pesoInput = document.getElementById('cliente-peso');
+    if (!tipoSelect || !pesoInput) return;
+
+    const pesos = {'simples': 1, 'media': 1.5, 'grande': 2, 'muito-pesada': 2.5};
+    pesoInput.value = pesos[tipoSelect.value] || 1;
+}
+
+function searchClientes() {
+    const query = document.getElementById('search-clientes').value.toLowerCase();
+    const tbody = document.getElementById('clientes-table-body');
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+function exportarRelatorio() {
+    let csv = 'Cliente,Zona,Bairro,Dia,Tecnico,Peso,Status\n';
+    appData.clientes.forEach(c => {
+        const zona = appData.zonas.find(z => z.id === c.zonaId);
+        const tecnico = appData.tecnicos.find(t => t.id === c.tecnicoId);
+        csv += `"${c.nome}","${zona?.nome || ''}","${c.bairro}","${c.dia}","${tecnico?.nome || 'Nao atribuido'}","${c.peso}","${c.status}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'relatorio_clientes.csv';
+    a.click();
+}
+
+function exportarTecnicosWhatsApp() {
+    let mensagem = '*📋 LISTA DE TECNICOS - ACQUASHOW*\n';
+    mensagem += '================================\n\n';
+    appData.tecnicos.forEach(t => {
+        const count = appData.clientes.filter(c => c.tecnicoId === t.id && c.status === 'ativo').length;
+        mensagem += `*${t.nome}*\n`;
+        mensagem += `Piscinas: ${count}\n`;
+        mensagem += `Status: ${t.status === 'disponivel' ? 'Disponivel' : 'Folga'}\n\n`;
+    });
+    
+    const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, '_blank');
+}
