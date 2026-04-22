@@ -493,6 +493,12 @@ function showSection(section) {
         target.classList.remove('hidden');
     }
 
+    // Fechar sidebar automaticamente em dispositivos móveis
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && window.innerWidth < 768) {
+        sidebar.classList.add('-translate-x-full');
+    }
+
     switch(section) {
         case 'dashboard': renderDashboard(); break;
         case 'clientes': renderClientes(); break;
@@ -546,14 +552,30 @@ document.addEventListener('DOMContentLoaded', function() {
     renderDashboard();
     populateSelects();
     initMap();
+    closeSidebarOnClickOutside();
 });
 
-// ==================== FUNÇÕES AUXILIARES ====================
+// ==================== FUNCOES AUXILIARES ====================
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) {
         sidebar.classList.toggle('-translate-x-full');
     }
+}
+
+// Fechar sidebar ao clicar fora dele em dispositivos moveis
+function closeSidebarOnClickOutside() {
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        
+        const isClickInsideSidebar = sidebar.contains(event.target);
+        const isToggleButton = event.target.closest('button[onclick*="toggleSidebar"]');
+        
+        if (!isClickInsideSidebar && !isToggleButton && window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+        }
+    });
 }
 
 // Expor globalmente
